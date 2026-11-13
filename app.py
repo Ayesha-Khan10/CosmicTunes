@@ -252,6 +252,30 @@ def sonify_point_scientific(val, val_type, scale_name, lat, lon, dur=4.0):
     
     return to_wav(buf)
 
+def get_climate_alert(value, layer_type):
+    if layer_type == "lst":
+        if value >= 35:
+            return "High", "High land surface temperature detected."
+        elif value >= 20:
+            return "Moderate", "Moderate land surface temperature detected."
+        return "Low", "Relatively low land surface temperature detected."
+
+    elif layer_type == "sst":
+        if value >= 30:
+            return "High", "High sea surface temperature detected."
+        elif value >= 20:
+            return "Moderate", "Moderate sea surface temperature detected."
+        return "Low", "Relatively low sea surface temperature detected."
+
+    elif layer_type == "ndvi":
+        if value < 0.2:
+            return "High", "Low vegetation index detected."
+        elif value < 0.5:
+            return "Moderate", "Moderate vegetation index detected."
+        return "Low", "High vegetation index detected."
+
+    return "N/A", "Climate alerts are unavailable for true-color imagery."
+
 # ----------------------------------------------------------------------------
 # 6. Sidebar Controls
 # ----------------------------------------------------------------------------
@@ -357,6 +381,28 @@ with tab1:
     m1.metric("Selected Target", f"{st.session_state.lat:.2f}°, {st.session_state.lon:.2f}°")
     m2.metric("Decoded Scientific Value", f"{sci_val:.2f} {unit_label}")
     m3.metric("Raw Pixel Spectral Data", f"R:{raw_rgb[0]} G:{raw_rgb[1]} B:{raw_rgb[2]}")
+
+
+    st.markdown("### Climate Alert System")
+
+    risk_level, alert_message = get_climate_alert(
+        sci_val, current_layer_key
+    )
+
+    if risk_level == "High":
+        st.error(f"High Indicator: {alert_message}")
+    elif risk_level == "Moderate":
+        st.warning(f"Moderate Indicator: {alert_message}")
+    elif risk_level == "Low":
+        st.success(f"Low Indicator: {alert_message}")
+    else:
+        st.info(alert_message)
+
+    st.caption(
+        "Experimental indicators based on approximate image-derived "
+        "values and illustrative thresholds. Not official climate warnings."
+    )
+
 
     st.write(f"**Multi-Sensory Text Audio Description:** The current position at latitude {st.session_state.lat:.1f}° and longitude {st.session_state.lon:.1f}° measures a decoded value of **{sci_val:.2f} {unit_label}**. Higher audio pitch represents higher measurements or warmer anomalies.")
     
