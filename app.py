@@ -430,6 +430,7 @@ with tab1:
     st.audio(wav_audio, format="audio/wav", autoplay=True)
 
 
+
 # ---- TAB 2: STORY & TIME-SERIES ----
 with tab2:
 
@@ -446,14 +447,53 @@ with tab2:
     )
 
     st.write(
-        "Experience decades of NASA climate data auditorily. "
-        "Year-by-year global temperature anomalies (GISTEMP v4) "
-        "are mapped to rising musical scale pitch and harmonic tension."
+        "Explore historical NASA climate data through interactive "
+        "visualization and sound. Select a year range to study "
+        "temperature anomalies across different periods."
     )
 
-    # Display the historical temperature anomaly chart
+    # ---------------------------------------------------------
+    # INTERACTIVE CLIMATE YEAR RANGE FILTER
+    # ---------------------------------------------------------
+
+    st.markdown("### 📅 Select Climate Year Range")
+
+    # Allow users to select their preferred historical period
+    selected_range = st.slider(
+        "Choose the starting and ending years",
+        min_value=first_year,
+        max_value=last_year,
+        value=(first_year, last_year),
+        step=1
+    )
+
+    # Get the selected starting and ending years
+    start_year, end_year = selected_range
+
+    # Filter the original climate dataset using the selected years
+    selected_data = df_temp[
+        (df_temp["Year"] >= start_year) &
+        (df_temp["Year"] <= end_year)
+    ].copy()
+
+    # Remove records with missing temperature anomaly values
+    valid_data = selected_data.dropna(subset=["anomaly"]).copy()
+
+    # Display the selected historical period
+    st.info(
+        f"Showing climate data from {start_year} to {end_year} "
+        f"({len(valid_data)} valid yearly records)."
+    )
+
+    # ---------------------------------------------------------
+    # CLIMATE TEMPERATURE CHART
+    # ---------------------------------------------------------
+
+    st.markdown("### 🌡️ Temperature Anomaly Visualization")
+
+    # Display the chart for the selected years only
     st.line_chart(
-        df_temp.set_index("Year")["anomaly"],
+        valid_data.set_index("Year")["anomaly"],
         y_label="Temperature Anomaly (°C)"
     )
 
@@ -462,9 +502,6 @@ with tab2:
     # ---------------------------------------------------------
 
     st.markdown("### 📊 Climate Trend Analysis")
-
-    # Remove records with missing temperature anomaly values
-    valid_data = df_temp.dropna(subset=["anomaly"]).copy()
 
     if len(valid_data) >= 2:
 
@@ -516,105 +553,140 @@ with tab2:
             f"{decadal_trend:+.3f} °C"
         )
 
-        # Explain the estimated long-term temperature trend
+        # Explain the estimated trend for the selected period
         st.info(
             f"The estimated linear trend is "
             f"{decadal_trend:+.3f} °C per decade "
-            f"across the available dataset."
+            f"for the selected period ({start_year}–{end_year})."
         )
 
     else:
         st.warning(
-            "Not enough valid climate records to calculate trends."
+            "Not enough valid climate records to calculate trends. "
+            "Please select a wider year range."
         )
-    
-
-
 
     # ---------------------------------------------------------
-    # DOWNLOAD HISTORICAL CLIMATE DATA
+    # DOWNLOAD FILTERED CLIMATE DATA
     # ---------------------------------------------------------
 
     st.markdown("### 📥 Export Climate Data")
 
-    # Convert the historical climate data into CSV format
-    csv_data = df_temp.to_csv(index=False)
+    # Convert only the selected climate records into CSV format
+    csv_data = selected_data.to_csv(index=False)
 
-    # Provide a button to download the climate dataset
+    # Provide a button to download the selected climate data
     st.download_button(
-        label="📥 Download Climate Data (CSV)",
+        label="📥 Download Selected Climate Data (CSV)",
         data=csv_data,
-        file_name="cosmictunes_climate_data.csv",
+        file_name=f"cosmictunes_climate_{start_year}_{end_year}.csv",
         mime="text/csv"
     )
 
     # ---------------------------------------------------------
-    # FULL DECADAL SOUNDTRACK
+    # CLIMATE SOUNDTRACK GENERATION
     # ---------------------------------------------------------
 
+    st.markdown("### 🎵 Climate Soundtrack")
+
+    # Generate a soundtrack using the selected historical years
     if st.button(
-        "▶️ Synthesize & Play Full Decadal Soundtrack",
+        "▶️ Synthesize & Play Climate Soundtrack",
         type="primary"
     ):
 
-        with st.spinner(
-            "Processing multi-decade data array into sonified waveform..."
-        ):
+        if len(valid_data) < 2:
 
-            total_years = len(df_temp)
-            duration_per_year = 0.25
-            total_dur = (total_years * duration_per_year) + 2.0
-
-            buf_story = np.zeros((int(total_dur * SR), 2))
-
-            anomalies = df_temp["anomaly"].to_numpy()
-            min_a, max_a = anomalies.min(), anomalies.max()
-
-            for idx, row in df_temp.iterrows():
-
-                norm_val = (
-                    (row["anomaly"] - min_a) / (max_a - min_a)
-                )
-
-                t_offset = idx * duration_per_year
-
-                freq = note_freq(
-                    norm_val,
-                    SCALES[scale_name],
-                    ROOT * 2,
-                    octaves=3
-                )
-
-                detune_val = norm_val * 0.02
-
-                add(
-                    buf_story,
-                    tone(
-                        freq,
-                        0.4,
-                        (1, 0.5, 0.2),
-                        detune=detune_val,
-                        a=0.01
-                    ),
-                    t_offset,
-                    pan=0.0,
-                    gain=0.6
-                )
-
-            # Convert the generated soundtrack into WAV audio
-            story_audio = to_wav(buf_story)
-
-            # Play the generated climate soundtrack
-            st.audio(
-                story_audio,
-                format="audio/wav",
-                autoplay=True
+            st.warning(
+                "Please select at least two valid years "
+                "to generate the climate soundtrack."
             )
 
-            st.success("Track playback complete!")
+        else:
+
+            with st.spinner(
+                "Processing selected climate data into music..."
+            ):
+
+                # Calculate soundtrack duration based on selected years
+                total_years = len(valid_data)
+                duration_per_year = 0.25
+                total_dur = (total_years * duration_per_year) + 2.0
+
+                # Create an empty stereo audio buffer
+                buf_story = np.zeros(
+                    (int(total_dur * SR), 2)
+                )
+
+                # Get temperature anomalies from selected years
+                anomalies = valid_data["anomaly"].to_numpy()
+
+                min_a = anomalies.min()
+                max_a = anomalies.max()
+
+                # Generate one musical note for each selected year
+                for position, (_, row) in enumerate(
+                    valid_data.iterrows()
+                ):
+
+                    # Normalize the temperature anomaly
+                    if max_a == min_a:
+                        norm_val = 0.5
+                    else:
+                        norm_val = (
+                            (row["anomaly"] - min_a) /
+                            (max_a - min_a)
+                        )
+
+                    # Calculate the position of the note in the audio
+                    t_offset = position * duration_per_year
+
+                    # Convert the normalized value into a musical frequency
+                    freq = note_freq(
+                        norm_val,
+                        SCALES[scale_name],
+                        ROOT * 2,
+                        octaves=3
+                    )
+
+                    # Calculate harmonic detuning
+                    detune_val = norm_val * 0.02
+
+                    # Add the generated musical note to the soundtrack
+                    add(
+                        buf_story,
+                        tone(
+                            freq,
+                            0.4,
+                            (1, 0.5, 0.2),
+                            detune=detune_val,
+                            a=0.01
+                        ),
+                        t_offset,
+                        pan=0.0,
+                        gain=0.6
+                    )
+
+                # Convert the generated soundtrack into WAV audio
+                story_audio = to_wav(buf_story)
+
+                # Play the generated climate soundtrack
+                st.audio(
+                    story_audio,
+                    format="audio/wav",
+                    autoplay=True
+                )
+
+                st.success(
+                    f"Climate soundtrack generated for "
+                    f"{start_year}–{end_year}!"
+                )
 
     # Display the source of the historical climate data
     st.caption(f"Data Source: {temp_source}")
+
+
+
 
 
 # ---- TAB 3: SCIENTIFIC CITATIONS ----
