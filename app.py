@@ -527,6 +527,26 @@ with tab2:
         st.warning(
             "Not enough valid climate records to calculate trends."
         )
+    
+
+
+
+    # ---------------------------------------------------------
+    # DOWNLOAD HISTORICAL CLIMATE DATA
+    # ---------------------------------------------------------
+
+    st.markdown("### 📥 Export Climate Data")
+
+    # Convert the historical climate data into CSV format
+    csv_data = df_temp.to_csv(index=False)
+
+    # Provide a button to download the climate dataset
+    st.download_button(
+        label="📥 Download Climate Data (CSV)",
+        data=csv_data,
+        file_name="cosmictunes_climate_data.csv",
+        mime="text/csv"
+    )
 
     # ---------------------------------------------------------
     # FULL DECADAL SOUNDTRACK
