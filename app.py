@@ -288,6 +288,18 @@ with st.sidebar:
     scale_name = st.selectbox("Musical Scale (Mood)", list(SCALES))
     view = st.radio("Select NASA Earth Layer", ["Land Temperature (LST)", "Sea Surface Temp (SST)", "Vegetation Cover (NDVI)", "True Color Satellite"])
 
+
+
+
+    # Allow users to customize the duration of generated audio
+    audio_duration = st.slider(
+        "Audio Duration (Seconds)",
+        min_value=2.0,
+        max_value=10.0,
+        value=4.0,
+        step=0.5
+    )
+
 # Map view selector key
 view_map = {
     "Land Temperature (LST)": "lst",
@@ -406,7 +418,15 @@ with tab1:
 
     st.write(f"**Multi-Sensory Text Audio Description:** The current position at latitude {st.session_state.lat:.1f}° and longitude {st.session_state.lon:.1f}° measures a decoded value of **{sci_val:.2f} {unit_label}**. Higher audio pitch represents higher measurements or warmer anomalies.")
     
-    wav_audio = sonify_point_scientific(sci_val, unit_label, scale_name, st.session_state.lat, st.session_state.lon)
+    # Generate audio using the duration selected by the user
+    wav_audio = sonify_point_scientific(
+    sci_val,
+    unit_label,
+    scale_name,
+    st.session_state.lat,
+    st.session_state.lon,
+    dur=audio_duration
+    )
     st.audio(wav_audio, format="audio/wav", autoplay=True)
 
 # ---- TAB 2: STORY & TIME-SERIES ----
