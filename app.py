@@ -429,35 +429,173 @@ with tab1:
     )
     st.audio(wav_audio, format="audio/wav", autoplay=True)
 
+
 # ---- TAB 2: STORY & TIME-SERIES ----
 with tab2:
+
+    # Load historical NASA GISTEMP temperature data
     df_temp, temp_source = load_gistemp()
-    st.subheader("📈 1980–2026 Global Temperature Anomaly Narrative")
-    st.write("Experience decades of NASA climate data auditorily. Year-by-year global temperature anomalies (GISTEMP v4) are mapped to rising musical scale pitch and harmonic tension.")
-    
-    st.line_chart(df_temp.set_index("Year")["anomaly"], y_label="Temperature Anomaly (°C)")
-    
-    if st.button("▶️ Synthesize & Play Full Decadal Soundtrack", type="primary"):
-        with st.spinner("Processing multi-decade data array into sonified waveform..."):
+
+    # Find the actual first and last years in the dataset
+    first_year = int(df_temp["Year"].min())
+    last_year = int(df_temp["Year"].max())
+
+    # Display the actual available year range
+    st.subheader(
+        f"📈 {first_year}–{last_year} Global Temperature Anomaly Narrative"
+    )
+
+    st.write(
+        "Experience decades of NASA climate data auditorily. "
+        "Year-by-year global temperature anomalies (GISTEMP v4) "
+        "are mapped to rising musical scale pitch and harmonic tension."
+    )
+
+    # Display the historical temperature anomaly chart
+    st.line_chart(
+        df_temp.set_index("Year")["anomaly"],
+        y_label="Temperature Anomaly (°C)"
+    )
+
+    # ---------------------------------------------------------
+    # CLIMATE TREND ANALYSIS
+    # ---------------------------------------------------------
+
+    st.markdown("### 📊 Climate Trend Analysis")
+
+    # Remove records with missing temperature anomaly values
+    valid_data = df_temp.dropna(subset=["anomaly"]).copy()
+
+    if len(valid_data) >= 2:
+
+        # Calculate the average temperature anomaly
+        average_anomaly = valid_data["anomaly"].mean()
+
+        # Find the year with the highest temperature anomaly
+        highest = valid_data.loc[
+            valid_data["anomaly"].idxmax()
+        ]
+
+        # Find the year with the lowest temperature anomaly
+        lowest = valid_data.loc[
+            valid_data["anomaly"].idxmin()
+        ]
+
+        # Calculate the linear temperature trend
+        slope, intercept = np.polyfit(
+            valid_data["Year"],
+            valid_data["anomaly"],
+            1
+        )
+
+        # Convert the yearly trend into a decadal trend
+        decadal_trend = slope * 10
+
+        # Display four climate statistics in separate columns
+        col1, col2, col3, col4 = st.columns(4)
+
+        col1.metric(
+            "Average Anomaly",
+            f"{average_anomaly:.2f} °C"
+        )
+
+        col2.metric(
+            "Highest Anomaly",
+            f"{highest['anomaly']:.2f} °C",
+            f"Year: {int(highest['Year'])}"
+        )
+
+        col3.metric(
+            "Lowest Anomaly",
+            f"{lowest['anomaly']:.2f} °C",
+            f"Year: {int(lowest['Year'])}"
+        )
+
+        col4.metric(
+            "Trend Per Decade",
+            f"{decadal_trend:+.3f} °C"
+        )
+
+        # Explain the estimated long-term temperature trend
+        st.info(
+            f"The estimated linear trend is "
+            f"{decadal_trend:+.3f} °C per decade "
+            f"across the available dataset."
+        )
+
+    else:
+        st.warning(
+            "Not enough valid climate records to calculate trends."
+        )
+
+    # ---------------------------------------------------------
+    # FULL DECADAL SOUNDTRACK
+    # ---------------------------------------------------------
+
+    if st.button(
+        "▶️ Synthesize & Play Full Decadal Soundtrack",
+        type="primary"
+    ):
+
+        with st.spinner(
+            "Processing multi-decade data array into sonified waveform..."
+        ):
+
             total_years = len(df_temp)
             duration_per_year = 0.25
             total_dur = (total_years * duration_per_year) + 2.0
+
             buf_story = np.zeros((int(total_dur * SR), 2))
-            
+
             anomalies = df_temp["anomaly"].to_numpy()
             min_a, max_a = anomalies.min(), anomalies.max()
-            
+
             for idx, row in df_temp.iterrows():
-                norm_val = (row["anomaly"] - min_a) / (max_a - min_a)
+
+                norm_val = (
+                    (row["anomaly"] - min_a) / (max_a - min_a)
+                )
+
                 t_offset = idx * duration_per_year
-                freq = note_freq(norm_val, SCALES[scale_name], ROOT * 2, octaves=3)
+
+                freq = note_freq(
+                    norm_val,
+                    SCALES[scale_name],
+                    ROOT * 2,
+                    octaves=3
+                )
+
                 detune_val = norm_val * 0.02
-                add(buf_story, tone(freq, 0.4, (1, 0.5, 0.2), detune=detune_val, a=0.01), t_offset, pan=0.0, gain=0.6)
-            
-            st.audio(to_wav(buf_story), format="audio/wav", autoplay=True)
+
+                add(
+                    buf_story,
+                    tone(
+                        freq,
+                        0.4,
+                        (1, 0.5, 0.2),
+                        detune=detune_val,
+                        a=0.01
+                    ),
+                    t_offset,
+                    pan=0.0,
+                    gain=0.6
+                )
+
+            # Convert the generated soundtrack into WAV audio
+            story_audio = to_wav(buf_story)
+
+            # Play the generated climate soundtrack
+            st.audio(
+                story_audio,
+                format="audio/wav",
+                autoplay=True
+            )
+
             st.success("Track playback complete!")
-            
+
+    # Display the source of the historical climate data
     st.caption(f"Data Source: {temp_source}")
+
 
 # ---- TAB 3: SCIENTIFIC CITATIONS ----
 with tab3:
