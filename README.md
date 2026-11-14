@@ -1,2 +1,1 @@
-# CosmicTunes
-An interactive Earth sonification experience that transforms NASA Earth science visualizations into sound.
+An interactive, multi-sensory Earth science experience that transforms NASA Earth visualizations and historical climate data into sound. Explore satellite observations, listen to Earth's environmental patterns, analyze global temperature trends, and export climate data through an interactive sonification platform.
